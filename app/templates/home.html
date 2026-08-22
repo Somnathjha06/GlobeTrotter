@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GlobeTrotter — Plan Your Next Adventure</title>
+  <meta name="description" content="GlobeTrotter helps you plan trips, organize itineraries, and track travel budgets all in one place." />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}" />
+</head>
+<body>
+
+<!-- ── Nav ─────────────────────────────────────────────────── -->
+<nav class="nav">
+  <a href="{{ url_for('home') }}" class="nav-logo">
+    <div class="nav-logo-icon">🌍</div>
+    GlobeTrotter
+  </a>
+  <div class="nav-links">
+    {% if current_user.is_authenticated %}
+      <span class="nav-link">Hi, {{ current_user.name.split()[0] }} 👋</span>
+      <a href="{{ url_for('auth.logout') }}" class="btn-nav">Log out</a>
+    {% else %}
+      <a href="{{ url_for('auth.login') }}"    class="nav-link">Sign in</a>
+      <a href="{{ url_for('auth.register') }}" class="btn-nav">Get started</a>
+    {% endif %}
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-eyebrow">✈️ Travel smarter, not harder</div>
+  <h1>Your next journey<br /><span>starts here.</span></h1>
+  <p class="hero-sub">
+    Plan trips, organize itineraries, discover cities, and keep your
+    travel budget in check — all in one beautiful place.
+  </p>
+  <div class="hero-actions">
+    {% if current_user.is_authenticated %}
+      <a href="{{ url_for('trips.index') }}" class="btn-hero btn-hero--primary">Go to my trips →</a>
+    {% else %}
+      <a href="{{ url_for('auth.register') }}" class="btn-hero btn-hero--primary" id="hero-cta-register">
+        Start for free →
+      </a>
+      <a href="{{ url_for('auth.login') }}" class="btn-hero btn-hero--outline" id="hero-cta-login">
+        Sign in
+      </a>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ── Features ─────────────────────────────────────────────── -->
+<div class="features">
+  <div class="feature-card">
+    <div class="feature-icon">🗺️</div>
+    <h3 class="feature-title">Smart Itineraries</h3>
+    <p class="feature-desc">
+      Build multi-city itineraries with ordered stops, activities,
+      and scheduled dates — all at a glance.
+    </p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">💰</div>
+    <h3 class="feature-title">Budget Tracking</h3>
+    <p class="feature-desc">
+      Set estimated budgets per category and track actual spending
+      so you never get caught off guard.
+    </p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🏙️</div>
+    <h3 class="feature-title">City Discovery</h3>
+    <p class="feature-desc">
+      Explore cities with cost indexes and curated activities to
+      choose the right stops for your trip.
+    </p>
+  </div>
+</div>
+
+<!-- ── CTA ──────────────────────────────────────────────────── -->
+<section class="cta">
+  <h2>Ready to explore the world?</h2>
+  <p>Join GlobeTrotter and start planning your dream trip today.</p>
+  {% if not current_user.is_authenticated %}
+    <a href="{{ url_for('auth.register') }}" class="btn-hero btn-hero--primary" id="cta-register-btn">
+      Create your free account →
+    </a>
+  {% endif %}
+</section>
+
+<!-- ── Footer ────────────────────────────────────────────────── -->
+<footer class="footer">
+  © 2026 GlobeTrotter · Built with Flask &amp; ❤️
+</footer>
+
+</body>
+</html>

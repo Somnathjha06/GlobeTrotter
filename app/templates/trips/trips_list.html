@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% from "macros/toolbar.html" import trip_toolbar %}
+
+{% block title %}My Trips — GlobeTrotter{% endblock %}
+{% block meta_description %}Browse all your trips — ongoing, upcoming, and completed adventures.{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trips.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="trips-page" style="max-width:1200px;margin:0 auto;padding:2rem 1.5rem 5rem;">
+
+  {# ── Page header ── #}
+  <div class="trips-list-header" style="margin-bottom:1.5rem;">
+    <div>
+      <a href="{{ url_for('main.dashboard') }}" class="page-back">← Dashboard</a>
+      <h1 class="page-title">My Trips</h1>
+    </div>
+    <a href="{{ url_for('trips.new') }}" class="btn-plan" id="new-trip-btn">✈️ Plan a trip</a>
+  </div>
+
+  {# ── Toolbar macro ── #}
+  {{ trip_toolbar(
+      action_url = url_for('trips.index'),
+      q          = q,
+      sort       = sort,
+      status     = 'all',
+      clear_url  = url_for('trips.index'),
+      show_group = false,
+      cta_url    = none
+  ) }}
+
+  {# ── Status tabs ── #}
+  <div class="tabs" id="trips-tabs">
+    {% set tab_list = [
+      ('all',       'All',       counts.all),
+      ('upcoming',  'Upcoming',  counts.upcoming),
+      ('ongoing',   'Ongoing',   counts.ongoing),
+      ('completed', 'Completed', counts.completed),
+    ] %}
+    {% for slug, label, count in tab_list %}
+      <a
+        href="{{ url_for('trips.index', tab=slug, q=q, sort=sort) }}"
+        class="tab {% if tab == slug %}active{% endif %}"
+        id="tab-{{ slug }}"
+      >
+        {{ label }}
+        <span class="tab-count">{{ count }}</span>
+      </a>
+    {% endfor %}
+  </div>
+
+  {# ── Trip cards grid ── #}
+  {% if trips %}
+    <div class="trips-grid" id="trips-grid">
+      {% for trip in trips %}
+      <div
+        class="trip-card"
+        id="trip-card-{{ trip.id }}"
+        onclick="window.location='{{ url_for('itinerary.view', trip_id=trip.id) }}'"
+      >
+        {# Computed status badge #}
+        <div class="trip-card-top">
+          <div class="trip-cover">
+            {%- if trip.computed_status == 'ongoing' -%}🛫
+            {%- elif trip.computed_status == 'completed' -%}✅
+            {%- else -%}✈️
+            {%- endif -%}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="trip-name">{{ trip.name }}</div>
+            {% set stop_count = trip.stops.count() %}
+            <div style="font-size:.75rem;color:var(--text-muted);margin-top:.1rem;">
+              {{ stop_count }} cit{{ 'ies' if stop_count != 1 else 'y' }}
+              {%- if trip.stops.count() > 0 -%}
+                {%- set first_stop = trip.stops.first() -%}
+                · {{ first_stop.city.name }}{% if stop_count > 1 %} +{{ stop_count - 1 }} more{% endif %}
+              {%- endif -%}
+            </div>
+          </div>
+          <span class="badge badge--{{ trip.computed_status }}">{{ trip.computed_status }}</span>
+        </div>
+
+        {% if trip.description %}
+          <p class="trip-desc">{{ trip.description }}</p>
+        {% endif %}
+
+        {# Date range row #}
+        <div class="trip-dates">
+          📅
+          {% if trip.start_date %}
+            {{ trip.start_date.strftime('%b %d, %Y') }}
+            {% if trip.end_date %}
+              → {{ trip.end_date.strftime('%b %d, %Y') }}
+              {# Duration chip #}
+              {% set days = (trip.end_date - trip.start_date).days %}
+              <span class="duration-chip">{{ days }}d</span>
+            {% endif %}
+          {% else %}
+            <span style="color:var(--text-subtle)">Dates not set</span>
+          {% endif %}
+        </div>
+
+        {# Progress bar for ongoing trips #}
+        {% if trip.computed_status == 'ongoing' and trip.start_date and trip.end_date %}
+          {% set total = (trip.end_date - trip.start_date).days %}
+          {% set elapsed = (today - trip.start_date).days %}
+          {% set pct = [[(elapsed / total * 100)|int, 0]|max, 100]|min %}
+          <div class="trip-progress">
+            <div class="trip-progress-bar" style="width:{{ pct }}%"></div>
+          </div>
+          <div style="font-size:.72rem;color:var(--text-muted);">
+            Day {{ elapsed + 1 }} of {{ total + 1 }}
+          </div>
+        {% endif %}
+
+        <div class="trip-footer">
+          <span style="font-size:.78rem;color:var(--text-subtle);">
+            {% set stop_count = trip.stops.count() %}
+            {{ stop_count }} stop{{ 's' if stop_count != 1 else '' }}
+          </span>
+          <span style="font-size:.78rem;color:var(--accent);">View itinerary →</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <div class="empty-state" id="trips-empty">
+      <div class="empty-icon">
+        {% if tab == 'ongoing' %}🛫
+        {% elif tab == 'completed' %}✅
+        {% elif tab == 'upcoming' %}🗓️
+        {% else %}🗺️{% endif %}
+      </div>
+      <div class="empty-title">
+        {% if q %}No trips match "{{ q }}"
+        {% elif tab == 'ongoing' %}No ongoing trips
+        {% elif tab == 'upcoming' %}No upcoming trips
+        {% elif tab == 'completed' %}No completed trips yet
+        {% else %}No trips yet{% endif %}
+      </div>
+      <div class="empty-sub">
+        {% if q %}Try a different search term or clear the filter.
+        {% elif tab != 'all' %}Try switching tabs or plan a new trip.
+        {% else %}Your adventures are waiting!{% endif %}
+      </div>
+      {% if q %}
+        <a href="{{ url_for('trips.index', tab=tab) }}" class="btn-plan" style="display:inline-flex;margin-top:1rem">Clear search</a>
+      {% else %}
+        <a href="{{ url_for('trips.new') }}" class="btn-plan" style="display:inline-flex;margin-top:1rem" id="empty-plan-btn">✈️ Plan a trip</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

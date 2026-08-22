@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trip.name }} — Itinerary Builder | GlobeTrotter{% endblock %}
+{% block meta_description %}Build the itinerary for {{ trip.name }} — add stops, dates, activities, and budgets.{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trips.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/itinerary.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="builder-page">
+
+  {# ── Trip hero bar ── #}
+  <div class="builder-hero">
+    <div class="builder-hero-left">
+      <div class="builder-trip-icon">✈️</div>
+      <div>
+        <div class="builder-trip-name">{{ trip.name }}</div>
+        <div class="builder-trip-meta">
+          <span class="badge badge--{{ trip.status.value }}">{{ trip.status.value }}</span>
+          {% if trip.start_date %}
+            📅 {{ trip.start_date.strftime('%b %d, %Y') }}
+            {% if trip.end_date %} → {{ trip.end_date.strftime('%b %d, %Y') }}{% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <a href="{{ url_for('main.dashboard') }}" class="page-back" style="margin-bottom:0">← Dashboard</a>
+  </div>
+
+  {# ── Section list ── #}
+  <div id="sections-container">
+    {% for stop in stops %}
+    <div class="section-card" data-index="{{ loop.index0 }}" id="section-{{ loop.index0 }}">
+
+      <div class="section-header">
+        <div class="section-number">{{ loop.index }}</div>
+        <div class="section-label">Stop {{ loop.index }}</div>
+        <button
+          type="button"
+          class="btn-remove-section"
+          onclick="removeSection(this)"
+          title="Remove this stop"
+        >✕ Remove</button>
+      </div>
+
+      <div class="section-body">
+
+        {# Row 1: City selector + description #}
+        <div class="section-row-2">
+          <div class="form-field">
+            <label class="form-label">Destination city <span class="required">*</span></label>
+            <div class="select-wrap">
+              <select
+                class="form-select section-city-select"
+                name="city_id"
+                required
+                onchange="onCityChange(this)"
+              >
+                <option value="">— Select city —</option>
+                {% for city in cities %}
+                <option
+                  value="{{ city.id }}"
+                  {% if city.id == stop.city_id %}selected{% endif %}
+                >{{ city.name }}, {{ city.country }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">Section description</label>
+            <input
+              class="form-input"
+              type="text"
+              name="description"
+              placeholder="e.g. Temple run & street food"
+              value=""
+            />
+          </div>
+        </div>
+
+        {# Row 2: Dates + Budget #}
+        <div class="section-row-3">
+          <div class="form-field">
+            <label class="form-label">Start date</label>
+            <input
+              class="form-input section-start"
+              type="date"
+              name="start_date"
+              value="{{ stop.start_date.strftime('%Y-%m-%d') if stop.start_date else '' }}"
+              onchange="validateSectionDates(this)"
+            />
+          </div>
+          <div class="form-field">
+            <label class="form-label">End date</label>
+            <input
+              class="form-input section-end"
+              type="date"
+              name="end_date"
+              value="{{ stop.end_date.strftime('%Y-%m-%d') if stop.end_date else '' }}"
+              onchange="validateSectionDates(this)"
+            />
+            <span class="field-error" id="date-err-{{ loop.index0 }}">
+              ⚠️ End date must be after start date
+            </span>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Budget (USD)</label>
+            <div class="budget-wrap">
+              <span class="budget-prefix">$</span>
+              <input
+                class="form-input budget-input"
+                type="number"
+                name="budget"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value="{{ stop.budget.estimated_cost if stop.budget else '' }}"
+              />
+            </div>
+          </div>
+        </div>
+
+        {# Activities checklist — loaded for pre-existing stops #}
+        {% if stop.all_activities %}
+        <div class="activities-picker visible">
+          <div class="activities-picker-title">💡 Activities to include</div>
+          <div class="activities-checklist">
+            {% for activity in stop.all_activities %}
+            <label class="activity-check-item {% if activity.is_selected %}checked{% endif %}">
+              <input
+                type="checkbox"
+                name="activity_ids"
+                value="{{ activity.id }}"
+                {% if activity.is_selected %}checked{% endif %}
+                onchange="this.closest('.activity-check-item').classList.toggle('checked', this.checked)"
+              />
+              <div class="activity-check-label">
+                <div class="activity-check-name">{{ activity.icon }} {{ activity.name }}</div>
+                <div class="activity-check-meta">
+                  {{ activity.type }}
+                  {% if activity.cost is not none %}· ${{ activity.cost|int }}{% endif %}
+                  {% if activity.duration %}· {{ activity.duration|int }}h{% endif %}
+                </div>
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        {% else %}
+        <div class="activities-picker" id="activities-picker-for-existing"></div>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# ── Add section button ── #}
+  <button type="button" class="btn-add-section" id="add-section-btn" onclick="addSection()">
+    + Add another stop
+  </button>
+
+  {# ── Sticky save bar ── #}
+  <div class="save-bar" id="save-bar">
+    <span class="save-bar-info" id="save-bar-count">
+      {{ stops|length }} stop{{ 's' if stops|length != 1 else '' }}
+    </span>
+    <div class="save-bar-actions">
+      <a href="{{ url_for('itinerary.summary', trip_id=trip.id) }}" class="btn-save-cancel" style="border-color: var(--accent); color: var(--accent);">View Itinerary</a>
+      <a href="{{ url_for('main.dashboard') }}" class="btn-save-cancel">Cancel</a>
+      <button class="btn-save" id="save-btn" onclick="saveItinerary()">
+        <span id="save-label">💾 Save itinerary</span>
+      </button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ================================================================
+   Itinerary Builder — Client-side JS
+   ================================================================ */
+
+const SAVE_URL        = "{{ url_for('itinerary.save', trip_id=trip.id) }}";
+const ACTIVITIES_URL  = "{{ url_for('itinerary.city_activities', city_id=0) }}".replace('/0', '');
+const CITIES          = {{ cities | map(attribute='id') | list | tojson }};
+
+// ── Section counter ────────────────────────────────────────────────────────
+let sectionCount = document.querySelectorAll('.section-card').length;
+
+// ── Section HTML template (for new sections) ───────────────────────────────
+function sectionTemplate(idx, citiesOptions) {
+  return `
+    <div class="section-card" data-index="${idx}" id="section-${idx}">
+      <div class="section-header">
+        <div class="section-number">${idx + 1}</div>
+        <div class="section-label">Stop ${idx + 1}</div>
+        <button type="button" class="btn-remove-section" onclick="removeSection(this)" title="Remove">✕ Remove</button>
+      </div>
+      <div class="section-body">
+        <div class="section-row-2">
+          <div class="form-field">
+            <label class="form-label">Destination city <span class="required">*</span></label>
+            <div class="select-wrap">
+              <select class="form-select section-city-select" name="city_id" required onchange="onCityChange(this)">
+                <option value="">— Select city —</option>
+                ${citiesOptions}
+              </select>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Section description</label>
+            <input class="form-input" type="text" name="description" placeholder="e.g. Temple run & street food" />
+          </div>
+        </div>
+        <div class="section-row-3">
+          <div class="form-field">
+            <label class="form-label">Start date</label>
+            <input class="form-input section-start" type="date" name="start_date" onchange="validateSectionDates(this)" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">End date</label>
+            <input class="form-input section-end" type="date" name="end_date" onchange="validateSectionDates(this)" />
+            <span class="field-error" id="date-err-${idx}">⚠️ End date must be after start date</span>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Budget (USD)</label>
+            <div class="budget-wrap">
+              <span class="budget-prefix">$</span>
+              <input class="form-input budget-input" type="number" name="budget" min="0" step="0.01" placeholder="0.00" />
+            </div>
+          </div>
+        </div>
+        <div class="activities-picker" id="activities-picker-${idx}"></div>
+      </div>
+    </div>`;
+}
+
+// Build the <option> list from existing selects (avoids re-fetching from server)
+function getCityOptions(selectedId = '') {
+  const existing = document.querySelector('.section-city-select');
+  if (!existing) return '';
+  return Array.from(existing.options).map(o =>
+    `<option value="${o.value}" ${o.value == selectedId ? 'selected' : ''}>${o.text}</option>`
+  ).join('');
+}
+
+// ── Add a new section ──────────────────────────────────────────────────────
+function addSection() {
+  const idx       = sectionCount++;
+  const container = document.getElementById('sections-container');
+  const div       = document.createElement('div');
+  div.innerHTML   = sectionTemplate(idx, getCityOptions());
+  container.appendChild(div.firstElementChild);
+  renumberSections();
+  updateCount();
+  // Smooth scroll to new section
+  document.getElementById(`section-${idx}`)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ── Remove a section ───────────────────────────────────────────────────────
+function removeSection(btn) {
+  const card = btn.closest('.section-card');
+  if (document.querySelectorAll('.section-card').length <= 1) {
+    showToast('You must have at least one stop.', 'error');
+    return;
+  }
+  card.style.opacity = '0';
+  card.style.transform = 'translateX(-8px)';
+  card.style.transition = 'opacity .25s, transform .25s';
+  setTimeout(() => { card.remove(); renumberSections(); updateCount(); }, 250);
+}
+
+// ── Renumber visible sections ──────────────────────────────────────────────
+function renumberSections() {
+  document.querySelectorAll('.section-card').forEach((card, i) => {
+    card.dataset.index = i;
+    card.querySelector('.section-number').textContent = i + 1;
+    card.querySelector('.section-label').textContent  = `Stop ${i + 1}`;
+  });
+}
+
+// ── Update save bar count ──────────────────────────────────────────────────
+function updateCount() {
+  const n = document.querySelectorAll('.section-card').length;
+  document.getElementById('save-bar-count').textContent =
+    `${n} stop${n !== 1 ? 's' : ''}`;
+}
+
+// ── Load activities when city changes ─────────────────────────────────────
+async function onCityChange(select) {
+  const card        = select.closest('.section-card');
+  const idx         = card.dataset.index;
+  const pickerEl    = card.querySelector('.activities-picker') ||
+                      document.getElementById(`activities-picker-${idx}`);
+  const cityId      = select.value;
+
+  if (!cityId) {
+    pickerEl.innerHTML = '';
+    pickerEl.classList.remove('visible');
+    return;
+  }
+
+  pickerEl.innerHTML = `<div class="activities-loading"><div class="spinner"></div> Loading activities…</div>`;
+  pickerEl.classList.add('visible');
+
+  try {
+    const res  = await fetch(`${ACTIVITIES_URL}/${cityId}`);
+    const data = await res.json();
+
+    if (!data.length) {
+      pickerEl.innerHTML = `<div class="activities-picker-title">No activities found for this city.</div>`;
+      return;
+    }
+
+    const items = data.map(a => `
+      <label class="activity-check-item">
+        <input type="checkbox" name="activity_ids" value="${a.id}"
+               onchange="this.closest('.activity-check-item').classList.toggle('checked', this.checked)" />
+        <div class="activity-check-label">
+          <div class="activity-check-name">${a.icon} ${a.name}</div>
+          <div class="activity-check-meta">
+            ${a.type}${a.cost != null ? ' · $' + a.cost : ''}${a.duration ? ' · ' + a.duration + 'h' : ''}
+          </div>
+        </div>
+      </label>`).join('');
+
+    pickerEl.innerHTML = `
+      <div class="activities-picker-title">💡 Activities to include</div>
+      <div class="activities-checklist">${items}</div>`;
+
+  } catch (e) {
+    pickerEl.innerHTML = `<div style="font-size:.82rem;color:var(--danger)">Could not load activities.</div>`;
+  }
+}
+
+// ── Date validation ────────────────────────────────────────────────────────
+function validateSectionDates(input) {
+  const card  = input.closest('.section-card');
+  const idx   = card.dataset.index;
+  const start = card.querySelector('[name="start_date"]').value;
+  const end   = card.querySelector('[name="end_date"]').value;
+  const errEl = document.getElementById(`date-err-${idx}`) ||
+                card.querySelector('.field-error');
+  const endEl = card.querySelector('[name="end_date"]');
+
+  if (start && end && end <= start) {
+    if (errEl) errEl.classList.add('visible');
+    if (endEl) endEl.classList.add('error');
+    return false;
+  }
+  if (errEl) errEl.classList.remove('visible');
+  if (endEl) endEl.classList.remove('error');
+  return true;
+}
+
+// ── Collect and save ───────────────────────────────────────────────────────
+async function saveItinerary() {
+  // Validate all sections first
+  let valid = true;
+  const cards = document.querySelectorAll('.section-card');
+  cards.forEach(card => {
+    const cityEl = card.querySelector('[name="city_id"]');
+    if (!cityEl.value) {
+      cityEl.classList.add('error');
+      valid = false;
+    } else {
+      cityEl.classList.remove('error');
+    }
+    if (!validateSectionDates(card.querySelector('[name="start_date"]'))) {
+      valid = false;
+    }
+  });
+
+  if (!valid) {
+    showToast('Please fix the errors before saving.', 'error');
+    return;
+  }
+
+  // Build payload
+  const sections = Array.from(cards).map(card => ({
+    city_id:      card.querySelector('[name="city_id"]').value,
+    description:  (card.querySelector('[name="description"]')?.value || '').trim(),
+    start_date:   card.querySelector('[name="start_date"]').value,
+    end_date:     card.querySelector('[name="end_date"]').value,
+    budget:       card.querySelector('[name="budget"]').value,
+    activity_ids: Array.from(card.querySelectorAll('[name="activity_ids"]:checked')).map(cb => cb.value),
+  }));
+
+  const btn   = document.getElementById('save-btn');
+  const label = document.getElementById('save-label');
+  btn.disabled   = true;
+  label.textContent = '⏳ Saving…';
+
+  try {
+    const res  = await fetch(SAVE_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ sections }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      showToast(`✅ Saved ${data.stop_count} stop${data.stop_count !== 1 ? 's' : ''}!`, 'success');
+      setTimeout(() => window.location.reload(), 900);
+    } else {
+      const msgs = data.errors ? data.errors.join('\n') : (data.error || 'Unknown error');
+      showToast('Error: ' + msgs, 'error');
+      btn.disabled   = false;
+      label.textContent = '💾 Save itinerary';
+    }
+  } catch (e) {
+    showToast('Network error — please try again.', 'error');
+    btn.disabled   = false;
+    label.textContent = '💾 Save itinerary';
+  }
+}
+
+// ── Toast helper ──────────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+  const old = document.querySelector('.toast');
+  if (old) old.remove();
+  const el = document.createElement('div');
+  el.className = `toast toast--${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+</script>
+{% endblock %}

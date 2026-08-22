@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — GlobeTrotter</title>
+  <meta name="description" content="Sign in to your GlobeTrotter account to manage your trips." />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card">
+
+    <!-- Branding -->
+    <a href="{{ url_for('home') }}" class="auth-logo">
+      <div class="auth-logo-icon">🌍</div>
+      <span class="auth-logo-text">GlobeTrotter</span>
+    </a>
+
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-subtitle">
+      Don't have an account?
+      <a href="{{ url_for('auth.register') }}">Sign up for free</a>
+    </p>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash-list">
+          {% for category, message in messages %}
+            <li class="flash flash--{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Login form -->
+    <form method="POST"
+          action="{{ url_for('auth.login') }}"
+          id="login-form"
+          novalidate>
+
+      <div class="form-grid">
+
+        <!-- Email -->
+        <div class="form-field full">
+          <label class="form-label" for="email">Email Address</label>
+          <input class="form-input" type="email" id="email" name="email"
+                 placeholder="jane@example.com" required autofocus
+                 autocomplete="email"
+                 value="{{ request.form.get('email', '') }}" />
+        </div>
+
+        <!-- Password -->
+        <div class="form-field full">
+          <div class="form-row-between" style="margin-bottom:.4rem">
+            <label class="form-label" for="password" style="margin-bottom:0">Password</label>
+            <a href="#" class="forgot-link" id="forgot-link">Forgot password?</a>
+          </div>
+          <input class="form-input" type="password" id="password" name="password"
+                 placeholder="Enter your password" required
+                 autocomplete="current-password" />
+        </div>
+
+        <!-- Remember me -->
+        <div class="full" style="margin-top:-.2rem">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remember" id="remember" />
+            Keep me signed in for 30 days
+          </label>
+        </div>
+
+        <!-- Submit -->
+        <div class="full">
+          <button class="btn-primary" type="submit" id="login-submit">
+            Sign In →
+          </button>
+        </div>
+
+      </div><!-- /form-grid -->
+    </form>
+
+  </div><!-- /auth-card -->
+</div><!-- /auth-page -->
+
+<script>
+  /* "Forgot password" — non-functional placeholder */
+  document.getElementById('forgot-link').addEventListener('click', e => {
+    e.preventDefault();
+    alert('Password reset is coming soon. Please contact support for now.');
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+{# ============================================================
+   Macro: trip_toolbar
+   Renders the search + filter/sort/group bar + optional CTA.
+   
+   Parameters:
+     action_url  — form action URL (required)
+     q           — current search query string
+     sort        — current sort value
+     status      — current status filter value
+     group       — current group-by value
+     clear_url   — URL to clear the search (used in the search tag)
+     show_group  — whether to show the "Group by" control (default True)
+     cta_url     — URL for the "Plan a trip" button (pass None to hide)
+     cta_label   — label for the CTA button (default "✈️ Plan a trip")
+   ============================================================ #}
+{% macro trip_toolbar(
+    action_url,
+    q         = '',
+    sort      = 'newest',
+    status    = 'all',
+    group     = 'none',
+    clear_url = '',
+    show_group = true,
+    cta_url   = none,
+    cta_label = '✈️ Plan a trip',
+    show_status = true,
+    group_options = none
+) %}
+
+<form method="GET" action="{{ action_url }}" id="toolbar-form" class="toolbar-form">
+  <div class="toolbar">
+
+    {# ── Search input ── #}
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input
+        class="search-input"
+        type="search"
+        name="q"
+        id="trip-search"
+        placeholder="Search trips…"
+        value="{{ q }}"
+        autocomplete="off"
+      />
+    </div>
+
+    {# ── Filter controls ── #}
+    <div class="toolbar-controls">
+
+      {% if show_group %}
+        <span class="ctrl-label">Group by</span>
+        <select class="ctrl-select" name="group" id="ctrl-group" onchange="this.form.submit()">
+          {% if group_options %}
+            {% for opt_val, opt_label in group_options %}
+              <option value="{{ opt_val }}" {% if group == opt_val %}selected{% endif %}>{{ opt_label }}</option>
+            {% endfor %}
+          {% else %}
+            <option value="none"   {% if group == 'none'   %}selected{% endif %}>None</option>
+            <option value="status" {% if group == 'status' %}selected{% endif %}>Status</option>
+          {% endif %}
+        </select>
+      {% endif %}
+
+      {% if show_status %}
+      <span class="ctrl-label">Filter</span>
+      <select class="ctrl-select" name="status" id="ctrl-status" onchange="this.form.submit()">
+        <option value="all"       {% if status == 'all'       %}selected{% endif %}>All trips</option>
+        <option value="upcoming"  {% if status == 'upcoming'  %}selected{% endif %}>Upcoming</option>
+        <option value="ongoing"   {% if status == 'ongoing'   %}selected{% endif %}>Ongoing</option>
+        <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+      </select>
+      {% endif %}
+
+      <span class="ctrl-label">Sort by</span>
+      <select class="ctrl-select" name="sort" id="ctrl-sort" onchange="this.form.submit()">
+        <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest</option>
+        <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest</option>
+        <option value="name"   {% if sort == 'name'   %}selected{% endif %}>Name A–Z</option>
+        <option value="start"  {% if sort == 'start'  %}selected{% endif %}>Start date</option>
+      </select>
+
+    </div>
+
+    <div class="toolbar-spacer"></div>
+
+    {# ── CTA button ── #}
+    {% if cta_url %}
+      <a href="{{ cta_url }}" class="btn-plan" id="plan-trip-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.25rem;">
+          <path d="M12 2v20M2 12h20"/>
+        </svg>
+        {{ cta_label|replace('✈️ ', '') }}
+      </a>
+    {% endif %}
+
+  </div>
+</form>
+
+{# ── Active search tag ── #}
+{% if q %}
+  <div class="search-tag" id="search-tag">
+    Searching: <strong>{{ q }}</strong>
+    <a href="{{ clear_url or action_url }}" style="margin-left:.25rem;opacity:.7">✕</a>
+  </div>
+{% endif %}
+
+<script>
+  (function() {
+    var inp = document.getElementById('trip-search');
+    if (!inp) return;
+    var timer;
+    inp.addEventListener('input', function() {
+      clearTimeout(timer);
+      timer = setTimeout(function() { inp.form.submit(); }, 450);
+    });
+  })();
+</script>
+{% endmacro %}

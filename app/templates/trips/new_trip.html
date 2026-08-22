@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Plan a New Trip — GlobeTrotter{% endblock %}
+{% block meta_description %}Create a new trip by choosing your destination, dates, and exploring suggested activities.{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trips.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="trips-page">
+
+  <div class="page-header">
+    <a href="{{ url_for('main.dashboard') }}" class="page-back">← Back to dashboard</a>
+    <h1 class="page-title">Plan a new trip ✈️</h1>
+    <p class="page-subtitle">Fill in the details below and we'll help you build your itinerary.</p>
+  </div>
+
+  <form method="POST" action="{{ url_for('trips.new') }}" id="new-trip-form" novalidate>
+
+    {# ── Card 1: Trip basics ── #}
+    <div class="form-card">
+      <div class="form-card-title">📋 Trip Details</div>
+      <div class="form-grid">
+
+        {# Trip name #}
+        <div class="form-field full">
+          <label class="form-label" for="trip_name">
+            Trip name <span class="required">*</span>
+          </label>
+          <input
+            class="form-input"
+            type="text"
+            id="trip_name"
+            name="trip_name"
+            placeholder="e.g. Summer in Japan"
+            required
+            value="{{ form.get('trip_name', '') }}"
+            autocomplete="off"
+          />
+        </div>
+
+        {# City selection #}
+        <div class="form-field full">
+          <label class="form-label" for="city_id">
+            Destination city <span class="required">*</span>
+          </label>
+          <div class="select-wrap">
+            <select
+              class="form-select"
+              id="city_id"
+              name="city_id"
+              required
+              onchange="loadActivities(this.value)"
+            >
+              <option value="">— Select a city —</option>
+              {% for city in cities %}
+              <option
+                value="{{ city.id }}"
+                {% if city.id == selected_city_id %}selected{% endif %}
+              >
+                {{ city.name }}, {{ city.country }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        {# Dates #}
+        <div class="form-field">
+          <label class="form-label" for="start_date">Start date</label>
+          <input
+            class="form-input"
+            type="date"
+            id="start_date"
+            name="start_date"
+            value="{{ form.get('start_date', '') }}"
+            onchange="validateDates()"
+          />
+        </div>
+
+        <div class="form-field">
+          <label class="form-label" for="end_date">End date</label>
+          <input
+            class="form-input"
+            type="date"
+            id="end_date"
+            name="end_date"
+            value="{{ form.get('end_date', '') }}"
+            onchange="validateDates()"
+          />
+          <span class="form-hint error" id="date-error" style="display:none">
+            ⚠️ End date must be after start date
+          </span>
+        </div>
+
+        {# Description #}
+        <div class="form-field full">
+          <label class="form-label" for="description">Description</label>
+          <textarea
+            class="form-textarea"
+            id="description"
+            name="description"
+            placeholder="What's the theme of this trip? Any goals or special occasions…"
+          >{{ form.get('description', '') }}</textarea>
+        </div>
+
+      </div>
+    </div>
+
+    {# ── Card 2: Suggested activities ── #}
+    <div class="form-card" id="suggestions-card">
+      <div class="form-card-title">💡 Suggested Places &amp; Activities</div>
+
+      {# Initial state: no city selected #}
+      <div id="suggestions-placeholder" class="suggestions-empty"
+           {% if selected_city_id %}style="display:none"{% endif %}>
+        <div style="font-size:2rem;margin-bottom:.5rem">🗺️</div>
+        Select a destination city above to see suggested activities and places to visit.
+      </div>
+
+      {# Loading skeleton #}
+      <div id="suggestions-loading" style="display:none">
+        <div class="skeleton-grid">
+          {% for _ in range(6) %}
+          <div class="skeleton-card"></div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Activities container #}
+      <div id="activities-container" class="activities-grid"
+           {% if not selected_city_id %}style="display:none"{% endif %}>
+        {# Pre-populated on server for POST re-render or GET with city_id param #}
+        {% for activity in activities %}
+        <div class="activity-card" data-activity-id="{{ activity.id }}">
+          <div class="activity-icon-name">
+            <span class="activity-icon">
+              {{ {"sightseeing":"🏛️","food":"🍜","adventure":"🧗","culture":"🎭","entertainment":"🎪","nature":"🌿"}.get(activity.type, "📌") }}
+            </span>
+            {{ activity.name }}
+          </div>
+          {% if activity.type %}<div class="activity-type">{{ activity.type }}</div>{% endif %}
+          <div class="activity-meta">
+            {% if activity.cost is not none %}
+              <span class="activity-cost">
+                {{ "$0" if activity.cost == 0 else "$" ~ activity.cost|int }}
+              </span>
+            {% endif %}
+            {% if activity.duration %}
+              <span class="activity-duration">⏱ {{ activity.duration|int }}h</span>
+            {% endif %}
+          </div>
+          <div style="margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.5rem; text-align: right;">
+            <a href="{{ url_for('search.index', q=activity.name) }}" style="font-size: 0.85rem; color: var(--accent); text-decoration: none;">🔍 Explore similar</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+    </div>
+
+    {# ── Actions ── #}
+    <div class="form-actions">
+      <a href="{{ url_for('main.dashboard') }}" class="btn-cancel" id="cancel-btn">Cancel</a>
+      <button type="submit" class="btn-submit" id="create-trip-btn">
+        Create Trip →
+      </button>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const ACTIVITIES_URL = "{{ url_for('trips.activities_for_city', city_id=0) }}".replace('/0', '');
+
+  /* ── Load activities via AJAX when city changes ── */
+  async function loadActivities(cityId) {
+    const container    = document.getElementById('activities-container');
+    const placeholder  = document.getElementById('suggestions-placeholder');
+    const loadingEl    = document.getElementById('suggestions-loading');
+
+    if (!cityId) {
+      container.style.display   = 'none';
+      placeholder.style.display = '';
+      loadingEl.style.display   = 'none';
+      return;
+    }
+
+    placeholder.style.display  = 'none';
+    container.style.display    = 'none';
+    loadingEl.style.display    = '';
+
+    try {
+      const res  = await fetch(`${ACTIVITIES_URL}/${cityId}`);
+      const data = await res.json();
+
+      loadingEl.style.display = 'none';
+      container.innerHTML = '';
+
+      if (!data.length) {
+        container.innerHTML = `<div class="suggestions-empty" style="grid-column:1/-1">
+          No activities listed for this city yet.</div>`;
+      } else {
+        data.forEach(a => {
+          container.innerHTML += `
+            <div class="activity-card" data-activity-id="${a.id}">
+              <div class="activity-icon-name">
+                <span class="activity-icon">${a.icon}</span>
+                ${a.name}
+              </div>
+              <div class="activity-type">${a.type}</div>
+              <div class="activity-meta">
+                <span class="activity-cost">${a.cost === 0 ? '$0 (Free)' : '$' + a.cost}</span>
+                ${a.duration ? `<span class="activity-duration">⏱ ${a.duration}h</span>` : ''}
+              </div>
+              <div style="margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.5rem; text-align: right;">
+                <a href="/search?q=${encodeURIComponent(a.name)}" style="font-size: 0.85rem; color: var(--accent); text-decoration: none;">🔍 Explore similar</a>
+              </div>
+            </div>`;
+        });
+      }
+      container.style.display = '';
+    } catch (err) {
+      loadingEl.style.display = 'none';
+      container.innerHTML = `<div class="suggestions-empty" style="grid-column:1/-1">
+        Could not load activities. Please try again.</div>`;
+      container.style.display = '';
+    }
+  }
+
+  /* ── Client-side date validation ── */
+  function validateDates() {
+    const start  = document.getElementById('start_date').value;
+    const end    = document.getElementById('end_date').value;
+    const errEl  = document.getElementById('date-error');
+    const endEl  = document.getElementById('end_date');
+
+    if (start && end && end <= start) {
+      errEl.style.display = '';
+      endEl.classList.add('is-invalid');
+      return false;
+    }
+    errEl.style.display = 'none';
+    endEl.classList.remove('is-invalid');
+    return true;
+  }
+
+  /* ── Prevent submit if dates are invalid ── */
+  document.getElementById('new-trip-form').addEventListener('submit', function(e) {
+    if (!validateDates()) {
+      e.preventDefault();
+      document.getElementById('end_date').focus();
+    }
+  });
+
+  /* ── Auto-load activities if city is pre-selected (POST re-render) ── */
+  const preselect = {{ selected_city_id|tojson }};
+  if (preselect && document.getElementById('activities-container').children.length === 0) {
+    loadActivities(preselect);
+  }
+</script>
+{% endblock %}

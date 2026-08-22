@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% from "macros/toolbar.html" import trip_toolbar %}
+
+{% block title %}Search Destinations & Activities | GlobeTrotter{% endblock %}
+{% block meta_description %}Search for cities, destinations, and activities to plan your next trip.{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trips.css') }}" />
+<style>
+.search-results-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 6rem;
+}
+.section-header {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 2.5rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+.result-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.result-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.result-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.result-icon {
+  font-size: 1.8rem;
+}
+.result-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+.result-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+.result-meta-item {
+  background: var(--bg-glass);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.result-actions {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+.btn-view {
+  display: block;
+  text-align: center;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.btn-view:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-results-page">
+
+  <h1 class="page-title">Explore Destinations & Activities</h1>
+
+  {{ trip_toolbar(
+      action_url=url_for('search.index'),
+      q=q,
+      sort=sort_by,
+      group=group_by,
+      clear_url=url_for('search.index'),
+      show_status=false,
+      group_options=[('none', 'None'), ('type', 'Type'), ('city', 'City')]
+  ) }}
+
+  {% if group_by == 'type' %}
+    {# Group by type logic (Cities vs Activities) #}
+    {% if cities %}
+      <h2 class="section-header">🏙️ Cities</h2>
+      <div class="results-grid">
+        {% for city in cities %}
+          <div class="result-card">
+            <div class="result-card-header">
+              <div class="result-icon">🗺️</div>
+            </div>
+            <div class="result-title">{{ city.name }}</div>
+            <div class="result-subtitle">{{ city.country }}</div>
+            <div class="result-actions">
+              <a href="{{ url_for('trips.new', city_id=city.id) }}" class="btn-view">Plan Trip Here</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if activities %}
+      <h2 class="section-header">📌 Activities</h2>
+      <div class="results-grid">
+        {% for activity in activities %}
+          <div class="result-card">
+            <div class="result-card-header">
+              <div class="result-icon">{{ activity.icon }}</div>
+            </div>
+            <div class="result-title">{{ activity.name }}</div>
+            <div class="result-subtitle">{{ activity.city.name }}, {{ activity.city.country }}</div>
+            <div class="result-meta">
+              <span class="result-meta-item">{{ activity.type|capitalize }}</span>
+              <span class="result-meta-item">{% if activity.cost %}Cost: ${{ "%.0f"|format(activity.cost) }}{% else %}Free{% endif %}</span>
+              {% if activity.duration %}<span class="result-meta-item">{{ activity.duration|int }}h</span>{% endif %}
+            </div>
+            <div class="result-actions">
+              <a href="{{ url_for('trips.new', city_id=activity.city_id) }}" class="btn-view">Plan Trip Here</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+  {% elif group_by == 'city' %}
+    {# Group by City logic #}
+    
+    {# We need a unique list of cities from both cities and activities #}
+    {% set city_dict = {} %}
+    {% for c in cities %}
+      {% set _ = city_dict.update({c.id: {'city': c, 'activities': []}}) %}
+    {% endfor %}
+    {% for a in activities %}
+      {% if a.city_id not in city_dict %}
+        {% set _ = city_dict.update({a.city_id: {'city': a.city, 'activities': []}}) %}
+      {% endif %}
+      {% set _ = city_dict[a.city_id]['activities'].append(a) %}
+    {% endfor %}
+    
+    {% for city_id, data in city_dict.items() %}
+      <h2 class="section-header">📍 {{ data.city.name }}, {{ data.city.country }}</h2>
+      <div class="results-grid">
+        {# Render City Card #}
+        {% if data.city in cities %}
+        <div class="result-card" style="border-color: var(--accent);">
+          <div class="result-card-header">
+            <div class="result-icon">🗺️</div>
+          </div>
+          <div class="result-title">{{ data.city.name }}</div>
+          <div class="result-subtitle">City Profile</div>
+          <div class="result-actions">
+            <a href="{{ url_for('trips.new', city_id=data.city.id) }}" class="btn-view">Plan Trip Here</a>
+          </div>
+        </div>
+        {% endif %}
+        
+        {# Render Activity Cards #}
+        {% for activity in data.activities %}
+          <div class="result-card">
+            <div class="result-card-header">
+              <div class="result-icon">{{ activity.icon }}</div>
+            </div>
+            <div class="result-title">{{ activity.name }}</div>
+            <div class="result-subtitle">{{ activity.type|capitalize }}</div>
+            <div class="result-meta">
+              <span class="result-meta-item">{% if activity.cost %}Cost: ${{ "%.0f"|format(activity.cost) }}{% else %}Free{% endif %}</span>
+              {% if activity.duration %}<span class="result-meta-item">{{ activity.duration|int }}h</span>{% endif %}
+            </div>
+            <div class="result-actions">
+              <a href="{{ url_for('trips.new', city_id=activity.city_id) }}" class="btn-view">Plan Trip Here</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+    
+  {% else %}
+    {# Flat list (None grouping) #}
+    {% if cities %}
+      <h2 class="section-header">Cities</h2>
+      <div class="results-grid" style="margin-bottom: 2rem;">
+        {% for city in cities %}
+          <div class="result-card">
+            <div class="result-card-header">
+              <div class="result-icon">🗺️</div>
+            </div>
+            <div class="result-title">{{ city.name }}</div>
+            <div class="result-subtitle">{{ city.country }}</div>
+            <div class="result-actions">
+              <a href="{{ url_for('trips.new', city_id=city.id) }}" class="btn-view">Plan Trip Here</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if activities %}
+      <h2 class="section-header">Activities</h2>
+      <div class="results-grid">
+        {% for activity in activities %}
+          <div class="result-card">
+            <div class="result-card-header">
+              <div class="result-icon">{{ activity.icon }}</div>
+            </div>
+            <div class="result-title">{{ activity.name }}</div>
+            <div class="result-subtitle">{{ activity.city.name }}, {{ activity.city.country }}</div>
+            <div class="result-meta">
+              <span class="result-meta-item">{{ activity.type|capitalize }}</span>
+              <span class="result-meta-item">{% if activity.cost %}Cost: ${{ "%.0f"|format(activity.cost) }}{% else %}Free{% endif %}</span>
+              {% if activity.duration %}<span class="result-meta-item">{{ activity.duration|int }}h</span>{% endif %}
+            </div>
+            <div class="result-actions">
+              <a href="{{ url_for('trips.new', city_id=activity.city_id) }}" class="btn-view">Plan Trip Here</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    
+    {% if not cities and not activities %}
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">No results found</div>
+        <p style="color: var(--text-muted);">Try a different search term or clear the filter.</p>
+        <a href="{{ url_for('search.index') }}" class="btn-plan" style="margin-top: 1rem;">Clear Search</a>
+      </div>
+    {% endif %}
+
+  {% endif %}
+
+</div>
+{% endblock %}

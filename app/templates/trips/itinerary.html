@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trip.name }} — Itinerary | GlobeTrotter{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trips.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="itinerary-page">
+
+  <a href="{{ url_for('main.dashboard') }}" class="page-back">← Back to dashboard</a>
+
+  {# ── Trip hero ── #}
+  <div class="trip-hero">
+    <div class="trip-hero-icon">✈️</div>
+    <div class="trip-hero-info">
+      <div class="trip-hero-name">{{ trip.name }}</div>
+      <div class="trip-hero-meta">
+        <span class="badge badge--{{ trip.status.value }}">{{ trip.status.value }}</span>
+        {% if trip.start_date %}
+          <span>📅 {{ trip.start_date.strftime('%b %d, %Y') }}
+          {% if trip.end_date %} → {{ trip.end_date.strftime('%b %d, %Y') }}{% endif %}
+          </span>
+        {% endif %}
+        <span>🏙️ {{ stops|length }} stop{{ 's' if stops|length != 1 else '' }}</span>
+      </div>
+      {% if trip.description %}
+        <p style="margin-top:.6rem;font-size:.88rem;color:var(--text-muted);">{{ trip.description }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Coming soon notice ── #}
+  <div style="
+    background: rgba(79,156,249,.07);
+    border: 1px solid rgba(79,156,249,.2);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    font-size: .88rem;
+    color: var(--info);
+  ">
+    🚧 <strong>Itinerary builder coming soon!</strong>
+    Here you'll be able to add/reorder stops, schedule activities, and build a day-by-day plan.
+  </div>
+
+  {# ── Stops with suggested activities ── #}
+  {% if stops %}
+    <h2 style="font-size:1.05rem;font-weight:700;margin-bottom:1rem;">🗺️ Trip Stops</h2>
+
+    {% for stop in stops %}
+    <div class="stop-card" id="stop-{{ stop.id }}">
+      <div class="stop-card-header">
+        <div class="stop-order">{{ loop.index }}</div>
+        <div>
+          <div class="stop-city-name">{{ stop.city.name }}, {{ stop.city.country }}</div>
+          {% if stop.start_date %}
+          <div class="stop-dates">
+            {{ stop.start_date.strftime('%b %d') }}
+            {% if stop.end_date %} → {{ stop.end_date.strftime('%b %d, %Y') }}{% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if stop.city_activities %}
+      <div class="stop-activities">
+        <div class="stop-activities-title">💡 Suggested activities</div>
+        <div class="activities-grid">
+          {% for activity in stop.city_activities %}
+          <div class="activity-card">
+            <div class="activity-icon-name">
+              <span class="activity-icon">{{ activity.icon }}</span>
+              {{ activity.name }}
+            </div>
+            {% if activity.type %}
+            <div class="activity-type">{{ activity.type }}</div>
+            {% endif %}
+            <div class="activity-meta">
+              {% if activity.cost is not none %}
+              <span class="activity-cost">
+                {{ "$0 (Free)" if activity.cost == 0 else "$" ~ activity.cost|int }}
+              </span>
+              {% endif %}
+              {% if activity.duration %}
+              <span class="activity-duration">⏱ {{ activity.duration|int }}h</span>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+    {% endfor %}
+
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🗺️</div>
+      <div class="empty-title">No stops yet</div>
+      <div class="empty-sub">Add cities to start building your itinerary.</div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

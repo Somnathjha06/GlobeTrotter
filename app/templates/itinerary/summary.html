@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trip.name }} — Itinerary | GlobeTrotter{% endblock %}
+{% block meta_description %}View the itinerary for {{ trip.name }}.{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trips.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/itinerary.css') }}" />
+<style>
+.summary-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 6rem;
+}
+.summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.25rem;
+}
+.stop-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+.stop-header {
+  background: var(--bg-glass);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.stop-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.stop-description {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.day-block {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.day-block:last-child {
+  border-bottom: none;
+}
+.day-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--accent);
+}
+.activity-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px dashed var(--border);
+}
+.activity-row:last-child {
+  border-bottom: none;
+}
+.activity-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+.activity-cost {
+  font-family: monospace;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.budget-section {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  margin-top: 2rem;
+}
+.budget-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+.chart-container {
+  max-width: 300px;
+  margin: 0 auto;
+}
+.empty-day {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="summary-page">
+
+  <div class="summary-header">
+    <div>
+      <a href="{{ url_for('main.dashboard') }}" class="page-back">← Dashboard</a>
+      <h1 class="page-title">{{ trip.name }} Itinerary</h1>
+    </div>
+    <a href="{{ url_for('itinerary.view', trip_id=trip.id) }}" class="btn-plan">✏️ Edit</a>
+  </div>
+
+  {% if stops %}
+    {% for stop in stops %}
+    <div class="stop-card">
+      <div class="stop-header">
+        <div class="stop-title">📍 {{ stop.city.name }}, {{ stop.city.country }}</div>
+        {% if stop.description %}
+          <div class="stop-description">{{ stop.description }}</div>
+        {% endif %}
+      </div>
+      
+      {% for day in stop.computed_days %}
+      <div class="day-block">
+        <div class="day-title">
+          {% if day.day_num %}
+            Day {{ day.day_num }} — {{ day.date.strftime('%B %d, %Y') }}
+          {% else %}
+            Unscheduled Activities
+          {% endif %}
+        </div>
+        
+        {% if day.activities %}
+          <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+            <div>Physical Activity</div>
+            <div>Expense</div>
+          </div>
+          {% for ta in day.activities %}
+            <div class="activity-row">
+              <div class="activity-name">
+                <span>{{ TYPE_ICONS.get(ta.activity.type, '📌') }}</span>
+                <span>{{ ta.activity.name }}</span>
+              </div>
+              <div class="activity-cost">
+                {% if ta.activity.cost %}
+                  ${{ "%.2f"|format(ta.activity.cost) }}
+                {% else %}
+                  Free
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-day">No activities planned for this day.</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🗺️</div>
+      <div class="empty-title">No stops yet</div>
+      <a href="{{ url_for('itinerary.view', trip_id=trip.id) }}" class="btn-plan" style="margin-top:1rem">Build Itinerary</a>
+    </div>
+  {% endif %}
+
+  {% if total_budget > 0 %}
+  <div class="budget-section">
+    <div class="budget-title">Total Budget: ${{ "%.2f"|format(total_budget) }}</div>
+    <div class="chart-container">
+      <canvas id="budgetChart"></canvas>
+    </div>
+  </div>
+  {% else %}
+  <div class="budget-section" style="text-align: center;">
+    <div class="empty-icon">💰</div>
+    <div class="empty-title">No budget allocated</div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if total_budget > 0 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ctx = document.getElementById('budgetChart').getContext('2d');
+  const labels = {{ budget_by_category | map(attribute=0) | list | tojson }};
+  const data = {{ budget_by_category | map(attribute=1) | list | tojson }};
+  
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: [
+          '#4F9CF9', '#38bdf8', '#818cf8', '#a78bfa', '#e879f9', '#fb7185'
+        ],
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#8b949e' }
+        }
+      }
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

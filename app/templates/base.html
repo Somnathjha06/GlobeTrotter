@@ -1,0 +1,93 @@
+{# ============================================================
+   GlobeTrotter — Shared base layout
+   All inner pages extend this template.
+   ============================================================ #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}GlobeTrotter{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Plan trips, track budgets, discover cities.{% endblock %}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}" />
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{# ── Top navigation ── #}
+<nav class="topnav" id="topnav">
+  <div class="topnav-inner">
+
+    {# Logo #}
+    <a href="{{ url_for('home') }}" class="topnav-logo" id="nav-logo">
+      <div class="topnav-logo-icon">🌍</div>
+      <span>GlobeTrotter</span>
+    </a>
+
+    {# Centre nav links #}
+    <div class="topnav-links" id="nav-links">
+      {% block nav_links %}
+        {% if current_user.is_authenticated %}
+          <a href="{{ url_for('main.dashboard') }}"  class="topnav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">Dashboard</a>
+          <a href="{{ url_for('trips.index') }}"     class="topnav-link {% if request.endpoint and request.endpoint.startswith('trips.') %}active{% endif %}">My Trips</a>
+        {% endif %}
+      {% endblock %}
+    </div>
+
+    {# Right actions #}
+    <div class="topnav-actions" id="nav-actions">
+      {% if current_user.is_authenticated %}
+        <div class="topnav-user" id="nav-user">
+          {% if current_user.photo_url %}
+            <img class="topnav-avatar" src="{{ current_user.photo_url }}" alt="{{ current_user.name }}" />
+          {% else %}
+            <div class="topnav-avatar topnav-avatar--initials">
+              {{ current_user.name[0].upper() }}
+            </div>
+          {% endif %}
+          <span class="topnav-user-name">{{ current_user.name.split()[0] }}</span>
+        </div>
+        <a href="{{ url_for('auth.logout') }}" class="topnav-btn topnav-btn--ghost" id="nav-logout">Log out</a>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}"    class="topnav-btn topnav-btn--ghost"   id="nav-login">Sign in</a>
+        <a href="{{ url_for('auth.register') }}" class="topnav-btn topnav-btn--primary" id="nav-register">Get started</a>
+      {% endif %}
+    </div>
+
+  </div>
+</nav>
+
+{# ── Flash messages ── #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-container" id="flash-container">
+      {% for category, message in messages %}
+        <div class="flash flash--{{ category }}">
+          <span>{{ message }}</span>
+          <button class="flash-close" onclick="this.parentElement.remove()">✕</button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+{# ── Page content ── #}
+<main class="page-main" id="page-main">
+  {% block content %}{% endblock %}
+</main>
+
+{# ── Footer ── #}
+<footer class="footer" id="footer">
+  <div class="footer-inner">
+    <a href="{{ url_for('home') }}" class="footer-logo">🌍 GlobeTrotter</a>
+    <p class="footer-copy">© 2026 GlobeTrotter. All rights reserved.</p>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% from "macros/toolbar.html" import trip_toolbar %}
+
+{% block title %}Dashboard — GlobeTrotter{% endblock %}
+{% block meta_description %}Your travel dashboard — trips, cities, and planning at a glance.{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+
+  {# ── Hero Banner ── #}
+  <div class="hero-banner">
+    <div class="hero-badge">✨ AI-Powered Itineraries</div>
+    <h1 class="hero-title">Where do you want to explore next{% if current_user.is_authenticated %}, {{ current_user.first_name or current_user.name }}{% endif %}?</h1>
+    <p class="hero-subtitle">GlobeTrotter — Plan Your Next Adventure</p>
+  </div>
+
+  {# ── Toolbar via shared macro ── #}
+  {{ trip_toolbar(
+      action_url = url_for('main.dashboard'),
+      q          = q,
+      sort       = sort,
+      status     = status,
+      group      = group,
+      clear_url  = url_for('main.dashboard'),
+      show_group = true,
+      cta_url    = url_for('trips.new'),
+      cta_label  = '✈️ Plan a trip'
+  ) }}
+
+  {# ── Top Regional Selections ── #}
+  {% if not q %}
+  <section id="regional-section">
+    <div class="section-header">
+      <h2 class="section-title">🌏 Top Regional Selections</h2>
+      <a href="{{ url_for('trips.index') }}" class="section-link">View all trips →</a>
+    </div>
+
+    <div class="city-row" id="city-row">
+      {% for city in top_cities %}
+      <div class="city-card" id="city-card-{{ city.id }}" style="background-image: url('https://picsum.photos/400/500?random={{ city.id }}');" onclick="window.location='{{ url_for('trips.new', city_id=city.id) }}'">
+        {% if city.cost_index %}
+          {% if city.cost_index < 1.0 %}
+            <div class="city-tag">Budget</div>
+          {% elif city.cost_index < 1.5 %}
+            <div class="city-tag">Popular</div>
+          {% else %}
+            <div class="city-tag">Luxury</div>
+          {% endif %}
+        {% else %}
+          <div class="city-tag">Trending</div>
+        {% endif %}
+        
+        <div class="city-content">
+          <div class="city-name">{{ city.name }}</div>
+          <div class="city-country">{{ city.country }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ── Previous Trips ── #}
+  <section id="trips-section">
+    <div class="section-header">
+      <h2 class="section-title">
+        {% if q %}Search results
+        {% else %}🗂️ Previous Trips{% endif %}
+        {% if trips %}
+          <span style="font-size:.8rem;font-weight:500;color:var(--text-muted);margin-left:.5rem;">
+            ({{ trips|length }})
+          </span>
+        {% endif %}
+      </h2>
+      {% if not q %}
+        <a href="{{ url_for('trips.index') }}" class="section-link">View all →</a>
+      {% endif %}
+    </div>
+
+    {% if trips %}
+      <div class="trips-grid" id="trips-grid">
+        {% for trip in trips %}
+        <div class="trip-card" id="trip-card-{{ trip.id }}" onclick="window.location='{{ url_for('itinerary.view', trip_id=trip.id) }}'">
+          <div class="trip-card-top">
+            <div class="trip-cover">✈️</div>
+            <div style="flex:1">
+              <div class="trip-name">{{ trip.name }}</div>
+            </div>
+            <span class="badge badge--{{ trip.status.value }}">{{ trip.status.value }}</span>
+          </div>
+
+          {% if trip.description %}
+            <p class="trip-desc">{{ trip.description }}</p>
+          {% endif %}
+
+          <div class="trip-dates">
+            📅
+            {% if trip.start_date %}
+              {{ trip.start_date.strftime('%b %d, %Y') }}
+              {% if trip.end_date %}
+                → {{ trip.end_date.strftime('%b %d, %Y') }}
+              {% endif %}
+            {% else %}
+              <span style="color:var(--text-subtle)">Dates not set</span>
+            {% endif %}
+          </div>
+
+          <div class="trip-footer">
+            <span style="font-size:.78rem;color:var(--text-subtle)">
+              {% set stop_count = trip.stops.count() %}
+              {{ stop_count }} stop{{ 's' if stop_count != 1 else '' }}
+            </span>
+            <span style="font-size:.78rem;color:var(--accent)">View →</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      <div class="empty-state" id="trips-empty">
+        <div class="empty-icon">🗺️</div>
+        {% if q %}
+          <div class="empty-title">No trips match "{{ q }}"</div>
+          <div class="empty-sub">Try a different search term or clear the filter.</div>
+          <a href="{{ url_for('main.dashboard') }}" class="btn-plan" style="display:inline-flex;">Clear search</a>
+        {% else %}
+          <div class="empty-title">No trips yet</div>
+          <div class="empty-sub">Start planning your first adventure!</div>
+          <a href="{{ url_for('trips.new') }}" class="btn-plan" style="display:inline-flex;" id="empty-plan-btn">✈️ Plan a trip</a>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  </section>
+
+</div>
+{% endblock %}

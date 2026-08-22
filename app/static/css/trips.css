@@ -1,0 +1,373 @@
+/* ============================================================
+   GlobeTrotter — Trips / New Trip Stylesheet
+   ============================================================ */
+
+/* ── Page layout ────────────────────────────────────────────── */
+.trips-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 5rem;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .82rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-bottom: .9rem;
+  transition: color var(--transition);
+}
+.page-back:hover { color: var(--text); }
+
+.page-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+.page-subtitle {
+  font-size: .88rem;
+  color: var(--text-muted);
+  margin-top: .35rem;
+}
+
+/* ── Form card ──────────────────────────────────────────────── */
+.form-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-card-title {
+  font-size: .95rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+/* ── Form grid ──────────────────────────────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem;
+}
+.form-grid .full { grid-column: 1 / -1; }
+
+.form-field { display: flex; flex-direction: column; gap: .4rem; }
+
+.form-label {
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.form-label .required { color: var(--danger); }
+
+.form-input,
+.form-select,
+.form-textarea {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .65rem .95rem;
+  color: var(--text);
+  font-size: .9rem;
+  font-family: var(--font);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  width: 100%;
+}
+.form-input::placeholder,
+.form-textarea::placeholder { color: var(--text-subtle); }
+.form-select option { background: var(--bg-elevated); }
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: rgba(79,156,249,.55);
+  box-shadow: 0 0 0 3px rgba(79,156,249,.12);
+}
+
+.form-textarea { resize: vertical; min-height: 80px; }
+
+/* Date pair */
+.date-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+}
+
+/* City select wrapper — custom arrow */
+.select-wrap {
+  position: relative;
+}
+.select-wrap::after {
+  content: '';
+  position: absolute;
+  right: .85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--text-muted);
+  pointer-events: none;
+}
+.select-wrap .form-select { appearance: none; -webkit-appearance: none; padding-right: 2rem; }
+
+/* ── Validation error state ─────────────────────────────────── */
+.form-input.is-invalid,
+.form-select.is-invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(248,81,73,.1);
+}
+.form-hint {
+  font-size: .75rem;
+  color: var(--text-subtle);
+  margin-top: .2rem;
+}
+.form-hint.error { color: var(--danger); }
+
+/* ── Activity suggestions panel ─────────────────────────────── */
+.suggestions-panel {
+  display: none; /* shown via JS when city is selected */
+}
+.suggestions-panel.visible { display: block; }
+
+.suggestions-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+
+.activities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: .75rem;
+}
+
+.activity-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  transition: border-color var(--transition), transform var(--transition);
+}
+.activity-card:hover {
+  border-color: rgba(79,156,249,.3);
+  transform: translateY(-1px);
+}
+
+.activity-icon-name {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .9rem;
+  font-weight: 600;
+}
+.activity-icon { font-size: 1.1rem; }
+
+.activity-type {
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.activity-meta {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin-top: .2rem;
+}
+
+.activity-cost     { color: var(--success); font-weight: 600; }
+.activity-duration { opacity: .8; }
+
+/* Loading skeleton */
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: .75rem;
+}
+.skeleton-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  height: 96px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: .6; }
+  50%       { opacity: .3; }
+}
+
+/* ── Submit row ─────────────────────────────────────────────── */
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: .5rem;
+}
+
+.btn-submit {
+  padding: .7rem 1.8rem;
+  background: var(--accent-grad);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: .925rem;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  box-shadow: 0 3px 16px rgba(79,156,249,.35);
+  transition: opacity var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+.btn-submit:hover {
+  opacity: .9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(79,156,249,.45);
+}
+
+.btn-cancel {
+  padding: .7rem 1.25rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: .875rem;
+  font-family: var(--font);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition);
+}
+.btn-cancel:hover { border-color: var(--border-hover); color: var(--text); }
+
+/* ── Trips list page ────────────────────────────────────────── */
+.trips-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+}
+
+/* ── Itinerary page ─────────────────────────────────────────── */
+.itinerary-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 5rem;
+}
+
+.trip-hero {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.trip-hero-icon {
+  width: 60px; height: 60px;
+  background: var(--accent-grad);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.trip-hero-info { flex: 1; }
+.trip-hero-name {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  margin-bottom: .35rem;
+}
+.trip-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  font-size: .84rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.stop-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}
+
+.stop-card-header {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: 1.1rem 1.4rem;
+  background: var(--bg-glass);
+  border-bottom: 1px solid var(--border);
+}
+
+.stop-order {
+  width: 28px; height: 28px;
+  background: var(--accent-grad);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.stop-city-name { font-size: 1rem; font-weight: 700; }
+.stop-dates     { font-size: .8rem; color: var(--text-muted); }
+
+.stop-activities {
+  padding: 1.1rem 1.4rem;
+}
+
+.stop-activities-title {
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: .85rem;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .form-grid  { grid-template-columns: 1fr; }
+  .date-pair  { grid-template-columns: 1fr; }
+  .form-card  { padding: 1.25rem; }
+  .form-actions { flex-direction: column-reverse; }
+  .btn-submit, .btn-cancel { width: 100%; text-align: center; }
+}

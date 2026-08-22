@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Account — GlobeTrotter</title>
+  <meta name="description" content="Sign up for GlobeTrotter and start planning your next adventure." />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card auth-card--wide">
+
+    <!-- Branding -->
+    <a href="{{ url_for('home') }}" class="auth-logo">
+      <div class="auth-logo-icon">🌍</div>
+      <span class="auth-logo-text">GlobeTrotter</span>
+    </a>
+
+    <h1 class="auth-title">Create your account</h1>
+    <p class="auth-subtitle">
+      Already have an account?
+      <a href="{{ url_for('auth.login') }}">Sign in</a>
+    </p>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash-list">
+          {% for category, message in messages %}
+            <li class="flash flash--{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Register form -->
+    <form method="POST"
+          action="{{ url_for('auth.register') }}"
+          enctype="multipart/form-data"
+          id="register-form"
+          novalidate>
+
+      <div class="form-grid">
+
+        <!-- Photo upload — full width -->
+        <div class="form-field full">
+          <label class="form-label">Profile Photo</label>
+          <div class="photo-upload-box" id="photo-box">
+            <img class="photo-upload-preview" id="photo-preview" src="" alt="Preview" />
+            <input type="file" name="photo" id="photo-input"
+                   accept="image/png,image/jpeg,image/gif,image/webp" />
+            <div class="photo-upload-icon" id="photo-icon">📷</div>
+            <p class="photo-upload-label" id="photo-label">
+              <span>Click to upload</span> or drag &amp; drop
+            </p>
+            <p class="photo-upload-hint">PNG, JPG, GIF or WEBP · max 5 MB</p>
+          </div>
+        </div>
+
+        <!-- First name -->
+        <div class="form-field">
+          <label class="form-label" for="first_name">First Name</label>
+          <input class="form-input" type="text" id="first_name" name="first_name"
+                 placeholder="Jane" required autocomplete="given-name"
+                 value="{{ request.form.get('first_name', '') }}" />
+        </div>
+
+        <!-- Last name -->
+        <div class="form-field">
+          <label class="form-label" for="last_name">Last Name</label>
+          <input class="form-input" type="text" id="last_name" name="last_name"
+                 placeholder="Doe" required autocomplete="family-name"
+                 value="{{ request.form.get('last_name', '') }}" />
+        </div>
+
+        <!-- Email — full width -->
+        <div class="form-field full">
+          <label class="form-label" for="email">Email Address</label>
+          <input class="form-input" type="email" id="email" name="email"
+                 placeholder="jane@example.com" required autocomplete="email"
+                 value="{{ request.form.get('email', '') }}" />
+        </div>
+
+        <!-- Password — full width -->
+        <div class="form-field full">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-input" type="password" id="password" name="password"
+                 placeholder="Minimum 8 characters" required autocomplete="new-password" />
+        </div>
+
+        <!-- Phone -->
+        <div class="form-field">
+          <label class="form-label" for="phone">Phone Number</label>
+          <input class="form-input" type="tel" id="phone" name="phone"
+                 placeholder="+1 555 000 0000" autocomplete="tel"
+                 value="{{ request.form.get('phone', '') }}" />
+        </div>
+
+        <!-- City -->
+        <div class="form-field">
+          <label class="form-label" for="city">City</label>
+          <input class="form-input" type="text" id="city" name="city"
+                 placeholder="New York" autocomplete="address-level2"
+                 value="{{ request.form.get('city', '') }}" />
+        </div>
+
+        <!-- Country — full width -->
+        <div class="form-field full">
+          <label class="form-label" for="country">Country</label>
+          <input class="form-input" type="text" id="country" name="country"
+                 placeholder="United States" autocomplete="country-name"
+                 value="{{ request.form.get('country', '') }}" />
+        </div>
+
+        <!-- Submit — full width -->
+        <div class="full">
+          <button class="btn-primary" type="submit" id="register-submit">
+            Create Account →
+          </button>
+        </div>
+
+      </div><!-- /form-grid -->
+    </form>
+
+  </div><!-- /auth-card -->
+</div><!-- /auth-page -->
+
+<script>
+  /* Live photo preview */
+  const input   = document.getElementById('photo-input');
+  const preview = document.getElementById('photo-preview');
+  const icon    = document.getElementById('photo-icon');
+  const label   = document.getElementById('photo-label');
+  const box     = document.getElementById('photo-box');
+
+  function showPreview(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+      icon.style.display  = 'none';
+      label.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  input.addEventListener('change', () => showPreview(input.files[0]));
+
+  box.addEventListener('dragover', e => { e.preventDefault(); box.classList.add('drag-over'); });
+  box.addEventListener('dragleave', ()  => box.classList.remove('drag-over'));
+  box.addEventListener('drop', e => {
+    e.preventDefault();
+    box.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) { input.files = e.dataTransfer.files; showPreview(file); }
+  });
+</script>
+</body>
+</html>
