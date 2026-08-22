@@ -144,7 +144,7 @@ flask run
 
 Designed and engineered with passion for the Odoo × LDCE Hackathon.
 
-* **Sandeep Mothe** - Lead Full Stack Developer & UI/UX Designer - [@sandeepmothe](https://github.com/sandeepmothe)
+* **Sandeep Mothe** - Lead Full Stack Developer & UI/UX Designer - [@mothesandeep](https://github.com/mothesandeep)
 * **Jha Somnath** - Team Leader & Contributor - [@Somnathjha06](https://github.com/Somnathjha06)
 * **Naman Tiwari** - Contributor - [@namantiwari962](https://github.com/namantiwari962)
 
